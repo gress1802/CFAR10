@@ -5,6 +5,8 @@ import torch
 from PIL import Image
 import matplotlib.pyplot as plt
 import random
+import os
+import pandas as pd
 
 
 class PrintMetricsCallback(Callback):
@@ -158,3 +160,35 @@ class Visualizer():
                 img = img.numpy()
             plt.imshow(img)
         plt.show()
+
+def process_experiment_logs(logs_path, exper_name):
+    """
+    Processes the latest version of the experiment logs, groups metrics by epoch,
+    and adds an experiment name column.  
+    
+    Parameters:
+    - logs_path: Path to the directory containing CSV logs.  
+    - legend_name: Name of the experiment for plotting legend.
+
+    Returns:
+    - A pandas DataFrame with metrics grouped by epoch and an added 'exp_name' column.
+    """
+    log_dir = os.path.join(logs_path, "model")
+    versions = [d for d in os.listdir(log_dir) if os.path.isdir(os.path.join(log_dir, d))]
+    latest_version = sorted(versions, key=lambda x: int(x.split('_')[-1]))[-1]
+    latest_log_path = os.path.join(log_dir, latest_version, "metrics.csv")
+
+    # Read the CSV into a DataFrame
+    df = pd.read_csv(latest_log_path)
+
+    # Drop the 'step' column if it exists
+    if 'step' in df.columns:
+        df = df.drop(columns=['step'])
+
+    # Group by 'epoch' and aggregate the metrics
+    df_grouped = df.groupby('epoch', as_index=False).mean()
+
+    # Add the 'exp_name' column
+    df_grouped['exp_name'] = exper_name
+
+    return df_grouped
